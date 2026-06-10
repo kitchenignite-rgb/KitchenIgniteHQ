@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KitchenIgnite HQ — Login</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#0b1220;--s1:#111927;--s2:#1a2535;
+    --gold:#f0b429;--teal:#00d4aa;--red:#ff6b6b;
+    --text:#e2e8f4;--sub:#6b7a99;--border:rgba(255,255,255,.08);
+  }
+  body{
+    background:var(--bg);color:var(--text);
+    font-family:'Segoe UI',system-ui,sans-serif;
+    min-height:100vh;display:flex;align-items:center;
+    justify-content:center;padding:20px;
+  }
+  .login-wrap{
+    width:100%;max-width:400px;
+  }
+  .logo{
+    text-align:center;margin-bottom:32px;
+  }
+  .logo-mark{
+    width:56px;height:56px;background:linear-gradient(135deg,var(--gold),#ff8c00);
+    border-radius:14px;display:flex;align-items:center;justify-content:center;
+    font-size:26px;margin:0 auto 12px;
+    box-shadow:0 8px 24px rgba(240,180,41,.3);
+  }
+  .logo-name{
+    font-family:'Segoe UI',sans-serif;font-size:22px;font-weight:800;
+    letter-spacing:-0.5px;
+  }
+  .logo-name span{color:var(--gold);}
+  .logo-sub{font-size:12px;color:var(--sub);margin-top:4px;letter-spacing:1px;}
+
+  .card{
+    background:var(--s1);border:1px solid var(--border);
+    border-radius:18px;padding:28px;
+  }
+  .card-title{
+    font-size:16px;font-weight:700;margin-bottom:6px;
+  }
+  .card-sub{
+    font-size:12px;color:var(--sub);margin-bottom:24px;line-height:1.6;
+  }
+
+  label{
+    display:block;font-size:11px;color:var(--sub);
+    letter-spacing:1px;margin-bottom:6px;font-weight:600;
+  }
+  input{
+    width:100%;background:var(--s2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 14px;color:var(--text);
+    font-size:14px;outline:none;margin-bottom:14px;
+    transition:border-color .2s;
+    font-family:inherit;
+  }
+  input:focus{border-color:rgba(240,180,41,.5);}
+  input::placeholder{color:var(--sub);}
+
+  .btn{
+    width:100%;padding:13px;border-radius:10px;border:none;
+    background:linear-gradient(135deg,var(--gold),#ff8c00);
+    color:#000;font-size:14px;font-weight:800;cursor:pointer;
+    letter-spacing:0.3px;transition:opacity .2s;
+    font-family:inherit;
+  }
+  .btn:hover{opacity:.9;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .err{
+    background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);
+    border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);
+    margin-bottom:14px;display:none;line-height:1.5;
+  }
+  .err.on{display:block;}
+
+  .loading{
+    text-align:center;padding:10px;font-size:12px;color:var(--sub);
+    display:none;
+  }
+  .loading.on{display:block;}
+
+  .spinner{
+    display:inline-block;width:16px;height:16px;
+    border:2px solid rgba(240,180,41,.2);
+    border-top-color:var(--gold);border-radius:50%;
+    animation:spin .8s linear infinite;margin-right:6px;
+    vertical-align:middle;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .footer{
+    text-align:center;margin-top:20px;
+    font-size:11px;color:var(--sub);line-height:1.8;
+  }
+  .footer a{color:var(--gold);text-decoration:none;}
+
+  /* Forgot password view */
+  #forgot-view{display:none;}
+  #login-view{display:block;}
+
+  .back-link{
+    background:none;border:none;color:var(--sub);
+    font-size:12px;cursor:pointer;padding:0;
+    margin-bottom:16px;display:flex;align-items:center;gap:4px;
+  }
+  .back-link:hover{color:var(--text);}
+</style>
+</head>
+<body>
+
+<div class="login-wrap">
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-mark">⚡</div>
+    <div class="logo-name">Kitchen<span>Ignite</span> HQ</div>
+    <div class="logo-sub">FOOD DELIVERY INTELLIGENCE PLATFORM</div>
+  </div>
+
+  <div class="card">
+
+    <!-- LOGIN VIEW -->
+    <div id="login-view">
+      <div class="card-title">Welcome back</div>
+      <div class="card-sub">Sign in to access your dashboard. Unauthorised access is not permitted.</div>
+
+      <div class="err" id="login-err"></div>
+      <div class="loading" id="login-loading"><span class="spinner"></span>Signing in...</div>
+
+      <label>EMAIL ADDRESS</label>
+      <input type="email" id="login-email" placeholder="you@kitchenignite.com"
+        autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()">
+
+      <label>PASSWORD</label>
+      <input type="password" id="login-pw" placeholder="Your password"
+        autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+
+      <button class="btn" onclick="doLogin()" id="login-btn">Sign In →</button>
+
+      <div style="text-align:center;margin-top:14px;">
+        <button class="back-link" onclick="showForgot()" style="display:inline-flex;">
+          Forgot password?
+        </button>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD VIEW -->
+    <div id="forgot-view">
+      <button class="back-link" onclick="showLogin()">← Back to sign in</button>
+      <div class="card-title">Reset Password</div>
+      <div class="card-sub">Enter your email and we'll send a reset link. Check your inbox including spam.</div>
+
+      <div class="err" id="forgot-err"></div>
+      <div class="loading" id="forgot-loading"><span class="spinner"></span>Sending reset email...</div>
+
+      <label>EMAIL ADDRESS</label>
+      <input type="email" id="forgot-email" placeholder="you@kitchenignite.com"
+        onkeydown="if(event.key==='Enter')doReset()">
+
+      <button class="btn" onclick="doReset()" id="forgot-btn">Send Reset Link →</button>
+
+      <div id="forgot-success" style="display:none;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);
+        border-radius:8px;padding:10px 14px;font-size:12px;color:#00d4aa;margin-top:14px;line-height:1.6;">
+        ✓ Reset email sent. Check your inbox and spam folder.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Secured by Firebase Authentication<br>
+    <a href="mailto:kitchenignite@gmail.com">kitchenignite@gmail.com</a>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+// FIREBASE CONFIG
+// Replace these values with YOUR Firebase project config
+// Get from: Firebase Console → Project Settings → Your apps → Web app
+// ════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyBG6UubU-ottv7FQKC11k46jpLuc2OoMiE",
+  authDomain:        "kitchenignite-hq.firebaseapp.com",
+  projectId:         "kitchenignite-hq",
+  storageBucket:     "kitchenignite-hq.firebasestorage.app",
+  messagingSenderId: "233383807604",
+  appId:             "1:233383807604:web:8637210872d5c55be2df21"
+};
+
+// ── Init Firebase ──
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+// ── If already logged in, redirect to dashboard ──
+auth.onAuthStateChanged(function(user){
+  if(user){
+    window.location.href = 'index.html';
+  }
+});
+
+// ── View toggles ──
+function showForgot(){
+  document.getElementById('login-view').style.display  = 'none';
+  document.getElementById('forgot-view').style.display = 'block';
+  document.getElementById('forgot-email').focus();
+}
+function showLogin(){
+  document.getElementById('forgot-view').style.display = 'none';
+  document.getElementById('login-view').style.display  = 'block';
+  document.getElementById('login-email').focus();
+}
+
+// ── Login ──
+function doLogin(){
+  var email = document.getElementById('login-email').value.trim();
+  var pw    = document.getElementById('login-pw').value;
+  var err   = document.getElementById('login-err');
+  var btn   = document.getElementById('login-btn');
+  var load  = document.getElementById('login-loading');
+
+  err.classList.remove('on');
+  if(!email || !pw){
+    err.textContent = 'Please enter your email and password.';
+    err.classList.add('on');
+    return;
+  }
+
+  btn.disabled = true;
+  load.classList.add('on');
+
+  auth.signInWithEmailAndPassword(email, pw)
+    .then(function(result){
+      // Firebase session is set — redirect to dashboard
+      window.location.href = 'index.html';
+    })
+    .catch(function(e){
+      btn.disabled = false;
+      load.classList.remove('on');
+      var msg = 'Sign in failed. Please check your credentials.';
+      if(e.code === 'auth/user-not-found')    msg = 'No account found with this email.';
+      if(e.code === 'auth/wrong-password')    msg = 'Incorrect password. Try again or reset below.';
+      if(e.code === 'auth/invalid-email')     msg = 'Please enter a valid email address.';
+      if(e.code === 'auth/too-many-requests') msg = 'Too many attempts — wait 5 minutes then try again.';
+      if(e.code === 'auth/network-request-failed') msg = 'No internet connection. Check your network.';
+      if(e.code === 'auth/invalid-credential') msg = 'Invalid credentials. Please reset your password below.';
+      if(e.code === 'auth/operation-not-allowed') msg = 'Email/Password login not enabled in Firebase.';
+      // Show exact error code for debugging
+      err.textContent = msg + ' (Code: ' + (e.code || 'unknown') + ')';
+      err.classList.add('on');
+    });
+}
+
+// ── Password Reset ──
+function doReset(){
+  var email   = document.getElementById('forgot-email').value.trim();
+  var err     = document.getElementById('forgot-err');
+  var btn     = document.getElementById('forgot-btn');
+  var load    = document.getElementById('forgot-loading');
+  var success = document.getElementById('forgot-success');
+
+  err.classList.remove('on');
+  success.style.display = 'none';
+  if(!email){
+    err.textContent = 'Enter your email address.';
+    err.classList.add('on');
+    return;
+  }
+
+  btn.disabled = true;
+  load.classList.add('on');
+
+  auth.sendPasswordResetEmail(email)
+    .then(function(){
+      load.classList.remove('on');
+      success.style.display = 'block';
+      document.getElementById('forgot-email').value = '';
+      btn.disabled = false;
+    })
+    .catch(function(e){
+      btn.disabled = false;
+      load.classList.remove('on');
+      var msg = 'Could not send reset email.';
+      if(e.code === 'auth/user-not-found') msg = 'No account found with this email address.';
+      if(e.code === 'auth/invalid-email')  msg = 'Please enter a valid email address.';
+      err.textContent = msg;
+      err.classList.add('on');
+    });
+}
+</script>
+</body>
+</html>
