@@ -175,6 +175,140 @@ saveOperators = function(ops){
 // IS_OWNER is set by onAuthStateChanged above based on Firestore role
 // Default is FALSE until Firebase confirms admin role
 
+
+// ════════════════════════════════════════════════════
+// ADMIN — DEMO REQUESTS + ACCESS LOG (Firestore)
+// ════════════════════════════════════════════════════
+
+async function loadDemoRequests(){
+  var el = document.getElementById('demo-requests-list');
+  var badge = document.getElementById('demo-badge');
+  if(!el) return;
+
+  // Only works when Firebase is available
+  try{
+    var snap = await firebase.firestore()
+      .collection('demo_requests')
+      .orderBy('submittedAt','desc')
+      .limit(20)
+      .get();
+
+    if(snap.empty){
+      el.innerHTML='<div style="font-size:12px;color:var(--sub);text-align:center;padding:16px;">No demo requests yet. Share your demo.html link to get started.</div>';
+      return;
+    }
+
+    var pending = snap.docs.filter(function(d){return d.data().status==='pending';}).length;
+    if(badge){
+      if(pending>0){badge.textContent=pending+' new';badge.style.display='inline';}
+      else{badge.style.display='none';}
+    }
+
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;">'
+      +'<thead><tr>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;text-align:left;padding:6px;border-bottom:1px solid var(--border);">NAME</th>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;text-align:left;padding:6px;border-bottom:1px solid var(--border);">CONTACT</th>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;text-align:left;padding:6px;border-bottom:1px solid var(--border);">BUSINESS</th>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;padding:6px;border-bottom:1px solid var(--border);">ACTION</th>'
+      +'</tr></thead><tbody>'
+      +snap.docs.map(function(doc){
+        var d=doc.data();
+        var date=d.submittedAt?new Date(d.submittedAt.seconds*1000).toLocaleDateString('en-MY'):'';
+        var isPending=d.status==='pending';
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          +'<td style="padding:8px 6px;"><div style="font-size:12px;font-weight:600;">'+( d.name||'')+'</div>'
+          +'<div style="font-size:10px;color:var(--sub);">'+date+'</div></td>'
+          +'<td style="padding:8px 6px;font-size:11px;"><div>'+( d.email||'')+'</div>'
+          +'<div style="color:var(--teal);">'+( d.whatsapp||'')+'</div></td>'
+          +'<td style="padding:8px 6px;font-size:11px;color:var(--sub);">'+( d.brands||'')+' brands<br>'+(d.locations||'')+' locs<br>'+(d.revenue||'')+'</td>'
+          +'<td style="padding:8px 6px;text-align:center;">'
+          +(isPending
+            ?'<button onclick="doSendCode(this)" style="padding:4px 8px;border-radius:5px;border:none;background:var(--teal);color:#000;font-size:10px;cursor:pointer;font-weight:700;" data-docid="'+doc.id+'" data-name="'+(d.name||'')+'" data-wa="'+(d.whatsapp||'')+'">Send Code</button>'
+            :'<span style="color:var(--teal);font-size:10px;">Done</span>')+'</td>'
+          +'</tr>';
+      }).join('')
+      +'</tbody></table>';
+  }catch(e){
+    el.innerHTML='<div style="font-size:12px;color:var(--sub);padding:12px;">Connect to the internet to load demo requests from Firestore.</div>';
+  }
+}
+
+function doSendCode(btn){
+  var docId=btn.getAttribute('data-docid')||'';
+  var name=btn.getAttribute('data-name')||'';
+  var wa=btn.getAttribute('data-wa')||'';
+  sendCodeToLead(docId,name,wa);
+}
+async function sendCodeToLead(docId, name, whatsapp){
+  // Generate a code
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var code='KI-';
+  for(var i=0;i<4;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+  code+='-';
+  for(var i=0;i<4;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+
+  // Save code to Firestore access_codes
+  try{
+    await firebase.firestore().collection('access_codes').add({
+      code:code, name:name, active:true, tier:'basic',
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt:new Date(Date.now()+7*24*60*60*1000)
+    });
+    // Mark request as sent
+    await firebase.firestore().collection('demo_requests').doc(docId).update({
+      status:'code_sent', accessCode:code,
+      sentAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // Open WhatsApp with code
+    var msg='Hi '+name+'! Your KitchenIgnite HQ access code is ready.\n\n'
+      +'Your code: *'+code+'*\n\n'
+      +'Steps:\n1. Go to: https://kitchenignite-rgb.github.io/KitchenIgniteHQ/demo.html\n'
+      +'2. Click "Already have an access code"\n'
+      +'3. Enter your email and code: *'+code+'*\n'
+      +'4. Upload your Klikit reports to see your insights\n\n'
+      +'Trial is valid for 7 days. Any questions? Reply here. - Sunny, KitchenIgnite';
+    window.open('https://wa.me/'+whatsapp.replace(/[^0-9]/g,'')+'?text='+encodeURIComponent(msg),'_blank');
+    toast('Code '+code+' sent to '+name+' via WhatsApp!');
+    loadDemoRequests();
+  }catch(e){
+    toast('Code generated: '+code+' — send manually to '+name);
+  }
+}
+
+async function loadAccessLog(){
+  var el=document.getElementById('access-log-list');
+  if(!el)return;
+  try{
+    var snap=await firebase.firestore()
+      .collection('access_logs')
+      .orderBy('accessedAt','desc')
+      .limit(10)
+      .get();
+    if(snap.empty){
+      el.innerHTML='<div style="font-size:12px;color:var(--sub);text-align:center;padding:16px;">No access logs yet. Logs appear when operators enter their access codes.</div>';
+      return;
+    }
+    el.innerHTML='<table style="width:100%;border-collapse:collapse;">'
+      +'<thead><tr>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;text-align:left;padding:6px;border-bottom:1px solid var(--border);">WHO</th>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;text-align:left;padding:6px;border-bottom:1px solid var(--border);">CODE USED</th>'
+      +'<th style="font-size:9px;color:var(--sub);font-family:DM Mono,monospace;text-align:left;padding:6px;border-bottom:1px solid var(--border);">WHEN</th>'
+      +'</tr></thead><tbody>'
+      +snap.docs.map(function(doc){
+        var d=doc.data();
+        var date=d.accessedAt?new Date(d.accessedAt.seconds*1000).toLocaleString('en-MY'):'';
+        return '<tr style="border-bottom:1px solid var(--border);">'
+          +'<td style="padding:8px 6px;"><div style="font-size:12px;font-weight:600;">'+(d.operatorName||'Unknown')+'</div>'
+          +'<div style="font-size:11px;color:var(--sub);">'+(d.email||'')+'</div></td>'
+          +'<td style="font-family:DM Mono,monospace;font-size:12px;color:var(--teal);padding:6px;">'+(d.code||'')+'</td>'
+          +'<td style="font-size:11px;color:var(--sub);padding:6px;">'+date+'</td>'
+          +'</tr>';
+      }).join('')+'</tbody></table>';
+  }catch(e){
+    el.innerHTML='<div style="font-size:12px;color:var(--sub);padding:12px;">Connect to the internet to load access logs.</div>';
+  }
+}
+
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -1344,11 +1478,17 @@ textarea.inp{resize:vertical;min-height:70px;}
       style="display:none;">
 
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;font-size:11px;color:var(--sub);">
-      <span style="background:rgba(0,177,79,.1);color:var(--grab);border:1px solid rgba(0,177,79,.2);padding:2px 8px;border-radius:10px;">GrabFood CSV</span>
-      <span style="background:rgba(215,15,100,.1);color:var(--fp);border:1px solid rgba(215,15,100,.2);padding:2px 8px;border-radius:10px;">Foodpanda Export</span>
-      <span style="background:rgba(238,77,45,.1);color:var(--shopee);border:1px solid rgba(238,77,45,.2);padding:2px 8px;border-radius:10px;">ShopeeFood Report</span>
-      <span style="background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.2);padding:2px 8px;border-radius:10px;">Klikit CSV</span>
-      <span style="background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.2);padding:2px 8px;border-radius:10px;">Your Excel Sheets</span>
+      <span style="background:rgba(0,177,79,.1);color:var(--grab);border:1px solid rgba(0,177,79,.2);padding:2px 8px;border-radius:10px;">🟢 GrabFood</span>
+      <span style="background:rgba(215,15,100,.1);color:var(--fp);border:1px solid rgba(215,15,100,.2);padding:2px 8px;border-radius:10px;">🩷 Foodpanda</span>
+      <span style="background:rgba(238,77,45,.1);color:var(--shopee);border:1px solid rgba(238,77,45,.2);padding:2px 8px;border-radius:10px;">🧡 ShopeeFood</span>
+      <span style="background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.2);padding:2px 8px;border-radius:10px;">⚡ Klikit</span>
+      <span style="background:rgba(0,0,0,.15);color:#06b6d4;border:1px solid rgba(6,182,212,.2);padding:2px 8px;border-radius:10px;">🚗 Uber Eats</span>
+      <span style="background:rgba(0,204,153,.1);color:#00cc99;border:1px solid rgba(0,204,153,.2);padding:2px 8px;border-radius:10px;">🦘 Deliveroo</span>
+      <span style="background:rgba(225,48,33,.1);color:#e13021;border:1px solid rgba(225,48,33,.2);padding:2px 8px;border-radius:10px;">🍽️ Zomato</span>
+      <span style="background:rgba(252,128,25,.1);color:#fc8019;border:1px solid rgba(252,128,25,.2);padding:2px 8px;border-radius:10px;">🛵 Swiggy</span>
+      <span style="background:rgba(255,102,0,.1);color:#ff6600;border:1px solid rgba(255,102,0,.2);padding:2px 8px;border-radius:10px;">🟠 Talabat</span>
+      <span style="background:rgba(0,177,79,.1);color:#00b14f;border:1px solid rgba(0,177,79,.2);padding:2px 8px;border-radius:10px;">🟢 GoFood</span>
+      <span style="background:rgba(96,165,250,.1);color:var(--blue);border:1px solid rgba(96,165,250,.2);padding:2px 8px;border-radius:10px;">📊 Any CSV/Excel</span>
     </div>
 
     <div id="uie-processing" style="display:none;text-align:center;padding:16px;color:var(--purple);font-family:'DM Mono',monospace;font-size:12px;">
@@ -1743,6 +1883,25 @@ textarea.inp{resize:vertical;min-height:70px;}
       </div>
     </div>
 
+    <!-- DEMO REQUESTS NOTIFICATION -->
+    <div class="tcard" style="margin-bottom:14px;" id="demo-requests-card">
+      <div class="ct" style="margin-bottom:10px;">📥 Demo Requests <span id="demo-badge" style="background:var(--red);color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;margin-left:6px;display:none;"></span></div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:10px;">People who filled the demo form — review and send them an access code</div>
+      <div id="demo-requests-list">
+        <div style="font-size:12px;color:var(--sub);text-align:center;padding:16px;">Loading requests...</div>
+      </div>
+      <button onclick="loadDemoRequests()" style="padding:7px 14px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);color:var(--sub);font-size:11px;cursor:pointer;margin-top:8px;">🔄 Refresh</button>
+    </div>
+
+    <!-- ACCESS LOG -->
+    <div class="tcard" style="margin-bottom:14px;">
+      <div class="ct" style="margin-bottom:10px;">👁️ Access Log — Who Viewed Your Dashboard</div>
+      <div id="access-log-list">
+        <div style="font-size:12px;color:var(--sub);text-align:center;padding:16px;">Loading access log...</div>
+      </div>
+      <button onclick="loadAccessLog()" style="padding:7px 14px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);color:var(--sub);font-size:11px;cursor:pointer;margin-top:8px;">🔄 Refresh</button>
+    </div>
+
     <!-- ACTIVE OPERATORS -->
     <div class="tcard" style="margin-bottom:16px;">
       <div class="ct" style="margin-bottom:14px;">👥 Active Operators</div>
@@ -1819,6 +1978,8 @@ function goto(p,b){
   // Admin tab: render operators list and show correct sections
   if(p==='admin'){
     renderOperatorsList();
+    if(typeof loadDemoRequests==='function')setTimeout(loadDemoRequests,300);
+    if(typeof loadAccessLog==='function')setTimeout(loadAccessLog,600);
     var ownerSec=document.getElementById('admin-owner-section');
     var opSec=document.getElementById('admin-operator-section');
     if(IS_OWNER){
@@ -1888,8 +2049,40 @@ function detectType(rows){
     return'shopee_orders';
   }
 
+  // ── UBER EATS files ──
+  if(cols.some(function(c){return c.includes('ubereats')||c==='restaurantuuid'||c==='menuitemname';})){return'ubereats_orders';}
+  if(cols.some(function(c){return c.includes('tripid')||c.includes('orderuuid');})){
+    if(cols.some(function(c){return c.includes('gross')||c.includes('payout');}))return'ubereats_orders';
+  }
+
+  // ── DELIVEROO files ──
+  if(cols.some(function(c){return c.includes('deliveroo')||c==='restaurantid'||c==='deliverooorderid';})){return'deliveroo_orders';}
+  if(cols.some(function(c){return c==='ordertotal'||c==='deliverysubtotal';})){return'deliveroo_orders';}
+
+  // ── ZOMATO files ──
+  if(cols.some(function(c){return c.includes('zomato')||c==='resid'||c==='resname';})){return'zomato_orders';}
+  if(cols.some(function(c){return c.includes('orderamount')&&c!='amount';})){
+    if(cols.some(function(c){return c.includes('zomatoid')||c.includes('resdisplayname');}))return'zomato_orders';
+  }
+
+  // ── SWIGGY files ──
+  if(cols.some(function(c){return c.includes('swiggy')||c==='swiggyorderid';})){return'swiggy_orders';}
+  if(cols.some(function(c){return c==='netpayout'||c==='gst';})){
+    if(cols.some(function(c){return c.includes('restaurantname')||c==='resname';}))return'swiggy_orders';
+  }
+
+  // ── TALABAT files ──
+  if(cols.some(function(c){return c.includes('talabat')||c==='branchid'||c==='vendorname';})){return'talabat_orders';}
+
+  // ── GOFOOD / GOJEK files ──
+  if(cols.some(function(c){return c.includes('gofood')||c.includes('gojek')||c==='outletname';})){return'gofood_orders';}
+  if(cols.some(function(c){return c==='orderid'&&cols.some(function(c2){return c2==='outletname'||c2==='merchantname';});})){return'gofood_orders';}
+
+  // ── OTTER / DELIVERECT aggregator ──
+  if(cols.some(function(c){return c.includes('otter')||c.includes('deliverect')||c==='channelorderdisplayid';})){return'aggregator_orders';}
+  if(cols.some(function(c){return c==='channel'&&cols.some(function(c2){return c2==='locationname'||c2==='brandname';});})){return'aggregator_orders';}
+
   // ── GENERIC SALES file ──
-  // Has revenue + date = some kind of sales report
   if(cols.some(function(c){return c.includes('revenue')||c.includes('sales')||c.includes('amount')||c.includes('income');})){
     if(cols.some(function(c){return c.includes('date')||c.includes('day')||c.includes('week')||c.includes('month');})){
       return'generic_sales';
@@ -1984,6 +2177,48 @@ function handleFiles(files){
           var shRows=(rows||[]).map(function(r){return normShopee(r);}).filter(function(r){return nv(r.Revenue)>0;});
           DB.items=DB.items.concat(shRows);
           loadedFiles.push('🧡 Shopee: '+file.name);
+        }else if(type==='ubereats_orders'){
+          var ueRows=(rows||[]).map(function(r){return normUberEats(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(ueRows);
+          loadedFiles.push('🚗 Uber Eats: '+file.name);
+          toast('Uber Eats loaded: '+ueRows.length+' rows');
+
+        }else if(type==='deliveroo_orders'){
+          var drRows=(rows||[]).map(function(r){return normDeliveroo(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(drRows);
+          loadedFiles.push('🦘 Deliveroo: '+file.name);
+          toast('Deliveroo loaded: '+drRows.length+' rows');
+
+        }else if(type==='zomato_orders'){
+          var zmRows=(rows||[]).map(function(r){return normZomato(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(zmRows);
+          loadedFiles.push('🍽️ Zomato: '+file.name);
+          toast('Zomato loaded: '+zmRows.length+' rows');
+
+        }else if(type==='swiggy_orders'){
+          var swRows=(rows||[]).map(function(r){return normSwiggy(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(swRows);
+          loadedFiles.push('🛵 Swiggy: '+file.name);
+          toast('Swiggy loaded: '+swRows.length+' rows');
+
+        }else if(type==='talabat_orders'){
+          var tbRows=(rows||[]).map(function(r){return normTalabat(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(tbRows);
+          loadedFiles.push('🟠 Talabat: '+file.name);
+          toast('Talabat loaded: '+tbRows.length+' rows');
+
+        }else if(type==='gofood_orders'){
+          var gfRows2=(rows||[]).map(function(r){return normGoFood(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(gfRows2);
+          loadedFiles.push('🟢 GoFood: '+file.name);
+          toast('GoFood loaded: '+gfRows2.length+' rows');
+
+        }else if(type==='aggregator_orders'){
+          var aggRows=(rows||[]).map(function(r){return normAggregator(r);}).filter(function(r){return nv(r.Revenue)>0;});
+          DB.items=DB.items.concat(aggRows);
+          loadedFiles.push('🔗 Aggregator: '+file.name);
+          toast('Aggregator data loaded: '+aggRows.length+' rows');
+
         }else if(type==='generic_sales'){
           var genRows=(rows||[]).map(function(r){return normGeneric(r);}).filter(function(r){return nv(r.Revenue)>0;});
           DB.items=DB.items.concat(genRows);
@@ -3021,6 +3256,78 @@ function normShopee(row){
     _type:'items',
     _source:'shopee'
   };
+}
+
+// ════ UBER EATS ════
+function normUberEats(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Net Payout','Payout','Gross','Total','Subtotal','Order Total')||'0').replace(/[^0-9.]/g,''))||0;
+  var loc=g('Restaurant','Restaurant Name','Location','Outlet','Store');
+  var date=g('Date','Order Date','Created At','Trip Date');
+  return{Item:g('Item','Menu Item','Product')||'Uber Eats Order',Location:loc||'Uber Eats',Brand:g('Brand','Category')||loc||'Uber Eats',Platform:'Uber Eats',Revenue:String(rev),Qty:g('Quantity','Qty')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'ubereats'};
+}
+
+// ════ DELIVEROO ════
+function normDeliveroo(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Order Total','Total','Net','Payout','Subtotal','Revenue')||'0').replace(/[^0-9.]/g,''))||0;
+  var loc=g('Restaurant','Restaurant Name','Outlet','Location','Site');
+  var date=g('Date','Order Date','Placed At','Created');
+  return{Item:g('Item','Product','Menu Item')||'Deliveroo Order',Location:loc||'Deliveroo',Brand:g('Brand','Category','Cuisine')||loc||'Deliveroo',Platform:'Deliveroo',Revenue:String(rev),Qty:g('Quantity','Items','Qty')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'deliveroo'};
+}
+
+// ════ ZOMATO ════
+function normZomato(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Order Amount','Total','Net Payout','Payment','Subtotal')||'0').replace(/[^0-9.]/g,''))||0;
+  var loc=g('Restaurant Name','Res Name','Outlet','Restaurant','Branch');
+  var date=g('Order Date','Date','Created At','Placed At');
+  return{Item:g('Item Name','Item','Product','Dish')||'Zomato Order',Location:loc||'Zomato',Brand:g('Brand','Category','Cuisine Type')||loc||'Zomato',Platform:'Zomato',Revenue:String(rev),Qty:g('Quantity','Qty','Items')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'zomato'};
+}
+
+// ════ SWIGGY ════
+function normSwiggy(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Net Payout','Order Value','Total','Payout','Settlement Amount')||'0').replace(/[^0-9.]/g,''))||0;
+  var loc=g('Restaurant Name','Res Name','Outlet Name','Store');
+  var date=g('Order Date','Date','Order Placed');
+  return{Item:g('Item Name','Item','Product')||'Swiggy Order',Location:loc||'Swiggy',Brand:g('Brand','Cuisine','Category')||loc||'Swiggy',Platform:'Swiggy',Revenue:String(rev),Qty:g('Quantity','Qty')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'swiggy'};
+}
+
+// ════ TALABAT ════
+function normTalabat(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Total','Order Total','Amount','Net','Subtotal')||'0').replace(/[^0-9.]/g,''))||0;
+  var loc=g('Vendor Name','Branch','Restaurant','Outlet','Store');
+  var date=g('Date','Order Date','Created At');
+  return{Item:g('Item','Product','Menu Item')||'Talabat Order',Location:loc||'Talabat',Brand:g('Brand','Category','Cuisine')||loc||'Talabat',Platform:'Talabat',Revenue:String(rev),Qty:g('Quantity','Qty')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'talabat'};
+}
+
+// ════ GOFOOD ════
+function normGoFood(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Total Price','Net Amount','Order Amount','Subtotal','Total')||'0').replace(/[^0-9.]/g,''))||0;
+  var loc=g('Outlet Name','Store Name','Merchant Name','Restaurant','Location');
+  var date=g('Order Date','Date','Transaction Date','Created At');
+  return{Item:g('Item','Product','Menu Item','Food')||'GoFood Order',Location:loc||'GoFood',Brand:g('Brand','Category','Cuisine')||loc||'GoFood',Platform:'GoFood',Revenue:String(rev),Qty:g('Quantity','Qty','Items')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'gofood'};
+}
+
+// ════ OTTER / DELIVERECT AGGREGATOR ════
+function normAggregator(row){
+  var keys=Object.keys(row);
+  function g(){var cs=Array.prototype.slice.call(arguments);for(var i=0;i<cs.length;i++){var n=cs[i].toLowerCase().replace(/[\s_\-\.()]/g,'');var f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'')==n;});if(!f)f=keys.find(function(k){return k.toLowerCase().replace(/[\s_\-\.()]/g,'').includes(n);});if(f&&row[f]!==undefined&&row[f]!=='')return String(row[f]);}return'';}
+  var rev=parseFloat((g('Order Total','Total','Net','Revenue','Subtotal','Payout')||'0').replace(/[^0-9.]/g,''))||0;
+  var channel=g('Channel','Platform','Source','Delivery Channel')||'Unknown Platform';
+  var loc=g('Location Name','Location','Outlet','Branch','Store','Restaurant');
+  var brand=g('Brand Name','Brand','Concept','Virtual Brand');
+  var date=g('Date','Order Date','Created At','Placed At');
+  return{Item:g('Item','Product','Menu Item')||'Order',Location:loc||'Location',Brand:brand||loc||channel,Platform:channel,Revenue:String(rev),Qty:g('Quantity','Qty')||'1',Date:date,_date:date?new Date(date):null,_type:'items',_source:'aggregator'};
 }
 
 function normGeneric(row){
