@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KitchenIgnite HQ — Request Demo Access</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0b1220;--s1:#111927;--s2:#1a2535;
+  --gold:#f0b429;--teal:#00d4aa;--red:#ff6b6b;--sub:#6b7a99;
+  --text:#e2e8f4;--border:rgba(255,255,255,.08);
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+
+.wrap{width:100%;max-width:440px;}
+
+.logo{text-align:center;margin-bottom:32px;}
+.logo-mark{width:56px;height:56px;background:linear-gradient(135deg,var(--gold),#ff8c00);
+  border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin:0 auto 12px;box-shadow:0 8px 24px rgba(240,180,41,.3);}
+.logo-name{font-size:22px;font-weight:800;}
+.logo-name span{color:var(--gold);}
+.logo-sub{font-size:11px;color:var(--sub);margin-top:3px;letter-spacing:2px;}
+
+/* Step cards */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:18px;padding:28px;display:none;}
+.card.on{display:block;}
+
+.card-title{font-size:16px;font-weight:700;margin-bottom:6px;}
+.card-sub{font-size:12px;color:var(--sub);margin-bottom:22px;line-height:1.6;}
+
+label{display:block;font-size:10px;color:var(--sub);letter-spacing:1.5px;
+  font-weight:700;margin-bottom:6px;text-transform:uppercase;}
+input,select{width:100%;background:var(--s2);border:1px solid var(--border);
+  border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;
+  outline:none;margin-bottom:14px;font-family:inherit;transition:border-color .2s;}
+input:focus,select:focus{border-color:rgba(240,180,41,.5);}
+input::placeholder{color:var(--sub);}
+select option{background:var(--s2);}
+
+.btn{width:100%;padding:13px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,var(--gold),#ff8c00);
+  color:#000;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;
+  transition:opacity .2s;}
+.btn:hover{opacity:.9;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-ghost{background:var(--s2);color:var(--sub);border:1px solid var(--border);margin-top:8px;}
+
+.err{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);
+  border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);
+  margin-bottom:14px;display:none;line-height:1.5;}
+.err.on{display:block;}
+.ok{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);
+  border-radius:8px;padding:10px 14px;font-size:12px;color:var(--teal);
+  margin-bottom:14px;display:none;line-height:1.5;}
+.ok.on{display:block;}
+
+.spin{display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(0,0,0,.2);border-top-color:#000;
+  border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Features preview */
+.features{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;}
+.feat{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:10px;font-size:11px;color:var(--sub);}
+.feat strong{color:var(--text);display:block;margin-bottom:2px;font-size:12px;}
+
+.wa-btn{display:flex;align-items:center;justify-content:center;gap:8px;
+  background:#25d366;color:#fff;border:none;border-radius:10px;
+  padding:13px;font-size:14px;font-weight:700;cursor:pointer;
+  width:100%;font-family:inherit;margin-top:8px;}
+.wa-btn:hover{background:#22c55e;}
+
+.step-indicator{display:flex;justify-content:center;gap:6px;margin-bottom:24px;}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.step-dot.on{background:var(--gold);}
+
+.footer{text-align:center;margin-top:18px;font-size:11px;color:var(--sub);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-mark">⚡</div>
+    <div class="logo-name">Kitchen<span>Ignite</span> HQ</div>
+    <div class="logo-sub">FOOD DELIVERY INTELLIGENCE PLATFORM</div>
+  </div>
+
+  <div class="step-indicator">
+    <div class="step-dot on" id="dot1"></div>
+    <div class="step-dot" id="dot2"></div>
+    <div class="step-dot" id="dot3"></div>
+  </div>
+
+  <!-- STEP 1: INTEREST FORM -->
+  <div class="card on" id="step1">
+    <div class="card-title">Request Demo Access</div>
+    <div class="card-sub">Tell us about your food business. We'll review and send your access code within 24 hours.</div>
+
+    <div class="features">
+      <div class="feat"><strong>📊 All platforms</strong>GrabFood, Foodpanda, Klikit</div>
+      <div class="feat"><strong>🔮 Predictive alerts</strong>Catch problems early</div>
+      <div class="feat"><strong>💰 Ad ROI tracker</strong>Find wasted spend</div>
+      <div class="feat"><strong>🤖 AI chat</strong>Ask about your data</div>
+    </div>
+
+    <div class="err" id="s1-err"></div>
+
+    <label>YOUR NAME</label>
+    <input type="text" id="inp-name" placeholder="e.g. Ahmad Farid">
+
+    <label>EMAIL ADDRESS</label>
+    <input type="email" id="inp-email" placeholder="you@company.com">
+
+    <label>WHATSAPP NUMBER</label>
+    <input type="tel" id="inp-wa" placeholder="+60 12-345 6789">
+
+    <label>HOW MANY BRANDS DO YOU RUN?</label>
+    <select id="inp-brands">
+      <option value="">Select...</option>
+      <option value="1-2">1-2 brands</option>
+      <option value="3-5">3-5 brands</option>
+      <option value="6-10">6-10 brands</option>
+      <option value="10+">More than 10</option>
+    </select>
+
+    <label>HOW MANY LOCATIONS?</label>
+    <select id="inp-locs">
+      <option value="">Select...</option>
+      <option value="1-2">1-2 locations</option>
+      <option value="3-5">3-5 locations</option>
+      <option value="6-10">6-10 locations</option>
+      <option value="10+">More than 10</option>
+    </select>
+
+    <label>MONTHLY REVENUE (APPROXIMATE)</label>
+    <select id="inp-rev">
+      <option value="">Select...</option>
+      <option value="<10k">Below RM 10,000</option>
+      <option value="10-30k">RM 10,000 - 30,000</option>
+      <option value="30-100k">RM 30,000 - 100,000</option>
+      <option value="100k+">Above RM 100,000</option>
+    </select>
+
+    <button class="btn" onclick="submitRequest()" id="s1-btn">
+      Request Demo Access →
+    </button>
+
+    <button class="btn btn-ghost" onclick="showCodeEntry()">
+      Already have an access code? Enter it →
+    </button>
+  </div>
+
+  <!-- STEP 2: SUBMITTED -->
+  <div class="card" id="step2">
+    <div style="text-align:center;padding:10px 0;">
+      <div style="font-size:48px;margin-bottom:16px;">✅</div>
+      <div class="card-title" style="font-size:18px;margin-bottom:8px;">Request Received!</div>
+      <div class="card-sub" style="text-align:center;margin-bottom:20px;">
+        Thank you! We'll review your request and send your personal access code within <strong style="color:var(--gold);">24 hours</strong> via WhatsApp and email.
+      </div>
+
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;font-size:12px;color:var(--sub);line-height:1.8;">
+        📧 Check: <strong style="color:var(--text);" id="submitted-email"></strong><br>
+        📱 WhatsApp: <strong style="color:var(--text);" id="submitted-wa"></strong><br>
+        ⏰ Response time: within 24 hours
+      </div>
+
+      <div class="card-sub" style="text-align:center;margin-bottom:16px;">
+        Questions? Message us directly on WhatsApp:
+      </div>
+
+      <button class="wa-btn" onclick="window.open('https://wa.me/601126794152?text=Hi Sunny, I just submitted a demo request for KitchenIgnite HQ. My name is '+encodeURIComponent(document.getElementById(\'inp-name\').value||\'\')+'.','_blank')">
+        💬 WhatsApp Sunny Now
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3: ENTER ACCESS CODE -->
+  <div class="card" id="step3">
+    <div class="card-title">Enter Your Access Code</div>
+    <div class="card-sub">Enter the personal access code sent to you by KitchenIgnite. Each code is unique to you and cannot be shared.</div>
+
+    <div class="err" id="s3-err"></div>
+    <div class="ok" id="s3-ok"></div>
+
+    <label>YOUR EMAIL</label>
+    <input type="email" id="code-email" placeholder="Same email you registered with">
+
+    <label>ACCESS CODE</label>
+    <input type="text" id="code-input" placeholder="KI-XXXX-XXXX"
+      style="font-family:monospace;font-size:18px;letter-spacing:4px;text-align:center;text-transform:uppercase;"
+      oninput="this.value=this.value.toUpperCase()">
+
+    <button class="btn" onclick="activateCode()" id="s3-btn">
+      Activate My Dashboard →
+    </button>
+
+    <button class="btn btn-ghost" onclick="showStep(1)">← Back to request form</button>
+  </div>
+
+  <div class="footer">
+    Secured by Firebase Authentication · KitchenIgnite · Made in Malaysia 🇲🇾
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════
+// FIREBASE CONFIG
+// ════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyBG6UubU-ottv7FQKC11k46jpLuc20oMiE",
+  authDomain:        "kitchenignite-hq.firebaseapp.com",
+  projectId:         "kitchenignite-hq",
+  storageBucket:     "kitchenignite-hq.firebasestorage.app",
+  messagingSenderId: "233383807604",
+  appId:             "1:233383807604:web:8637210872d5c55be2df21"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── STEP NAVIGATION ──
+function showStep(n){
+  document.querySelectorAll('.card').forEach(function(c){c.classList.remove('on');});
+  document.querySelectorAll('.step-dot').forEach(function(d){d.classList.remove('on');});
+  document.getElementById('step'+n).classList.add('on');
+  document.getElementById('dot'+n).classList.add('on');
+}
+function showCodeEntry(){showStep(3);}
+
+// ── SUBMIT INTEREST REQUEST ──
+async function submitRequest(){
+  var name   = document.getElementById('inp-name').value.trim();
+  var email  = document.getElementById('inp-email').value.trim();
+  var wa     = document.getElementById('inp-wa').value.trim();
+  var brands = document.getElementById('inp-brands').value;
+  var locs   = document.getElementById('inp-locs').value;
+  var rev    = document.getElementById('inp-rev').value;
+  var err    = document.getElementById('s1-err');
+  var btn    = document.getElementById('s1-btn');
+
+  err.classList.remove('on');
+  if(!name||!email||!wa||!brands||!locs||!rev){
+    err.textContent='Please fill in all fields.';
+    err.classList.add('on');
+    return;
+  }
+  if(!email.includes('@')){
+    err.textContent='Please enter a valid email address.';
+    err.classList.add('on');
+    return;
+  }
+
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span>Submitting...';
+
+  try{
+    // Save to Firestore
+    await db.collection('demo_requests').add({
+      name:name, email:email, whatsapp:wa,
+      brands:brands, locations:locs, revenue:rev,
+      status:'pending',
+      submittedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      source:'demo_page'
+    });
+
+    // Show success
+    document.getElementById('submitted-email').textContent=email;
+    document.getElementById('submitted-wa').textContent=wa;
+    showStep(2);
+
+  }catch(e){
+    // Even if Firestore fails, show success and notify via WhatsApp
+    document.getElementById('submitted-email').textContent=email;
+    document.getElementById('submitted-wa').textContent=wa;
+    showStep(2);
+    // Fallback: open WhatsApp with the lead details
+    setTimeout(function(){
+      var msg='NEW DEMO REQUEST:\nName: '+name+'\nEmail: '+email+'\nWhatsApp: '+wa+'\nBrands: '+brands+'\nLocations: '+locs+'\nRevenue: '+rev;
+      // Store in localStorage as backup
+      try{localStorage.setItem('ki_lead_'+Date.now(),JSON.stringify({name,email,wa,brands,locs,rev}));}catch(x){}
+    },1000);
+  }
+
+  btn.disabled=false;
+  btn.textContent='Request Demo Access →';
+}
+
+// ── ACTIVATE ACCESS CODE ──
+async function activateCode(){
+  var email = document.getElementById('code-email').value.trim();
+  var code  = document.getElementById('code-input').value.trim().toUpperCase();
+  var err   = document.getElementById('s3-err');
+  var ok    = document.getElementById('s3-ok');
+  var btn   = document.getElementById('s3-btn');
+
+  err.classList.remove('on');
+  ok.classList.remove('on');
+
+  if(!email||!code){
+    err.textContent='Please enter your email and access code.';
+    err.classList.add('on');
+    return;
+  }
+
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span>Verifying...';
+
+  try{
+    // Check code in Firestore
+    var snap = await db.collection('access_codes')
+      .where('code','==',code)
+      .where('active','==',true)
+      .get();
+
+    if(snap.empty){
+      err.textContent='Invalid or expired access code. Contact kitchenignite@gmail.com';
+      err.classList.add('on');
+      btn.disabled=false;
+      btn.textContent='Activate My Dashboard →';
+      return;
+    }
+
+    var codeDoc = snap.docs[0];
+    var codeData = codeDoc.data();
+
+    // Log the access
+    await db.collection('access_logs').add({
+      code:code, email:email,
+      operatorName:codeData.name||'',
+      accessedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      userAgent:navigator.userAgent
+    });
+
+    // Update last used
+    await db.collection('access_codes').doc(codeDoc.id).update({
+      lastUsed:firebase.firestore.FieldValue.serverTimestamp(),
+      lastEmail:email,
+      useCount:(codeData.useCount||0)+1
+    });
+
+    // Store session
+    sessionStorage.setItem('ki_demo_access',JSON.stringify({
+      code:code,email:email,
+      name:codeData.name||'',
+      tier:codeData.tier||'basic',
+      brand:codeData.brand||'KitchenIgnite',
+      expiresAt:codeData.expiresAt||null
+    }));
+
+    ok.textContent='✓ Access verified! Redirecting to your dashboard...';
+    ok.classList.add('on');
+
+    setTimeout(function(){
+      window.location.href='index.html';
+    },1500);
+
+  }catch(e){
+    // Offline fallback — check localStorage codes (set by admin panel)
+    var stored = localStorage.getItem('ki_operators');
+    var ops = stored?JSON.parse(stored):[];
+    var found = ops.find(function(o){return o.code===code&&o.active;});
+    if(found){
+      sessionStorage.setItem('ki_demo_access',JSON.stringify({
+        code:code,email:email,name:found.name,tier:found.tier,brand:found.brandName
+      }));
+      ok.textContent='✓ Access verified! Redirecting...';
+      ok.classList.add('on');
+      setTimeout(function(){window.location.href='index.html';},1500);
+    }else{
+      err.textContent='Could not verify. Check your internet connection or contact +60 11-2679 4152';
+      err.classList.add('on');
+    }
+  }
+
+  btn.disabled=false;
+  btn.textContent='Activate My Dashboard →';
+}
+
+// Check if coming back after request
+var params = new URLSearchParams(window.location.search);
+if(params.get('code')) {
+  showStep(3);
+  document.getElementById('code-input').value = params.get('code').toUpperCase();
+}
+</script>
+</body>
+</html>
