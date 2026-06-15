@@ -5938,10 +5938,17 @@ function generatePRR(){
 
   // Platform breakdown
   var platMap={};
-  DB.items.filter(function(r){return r.Location===loc;}).forEach(function(r){
-    var p=r.Platform||'Unknown';
+  var platItemsTotal=0;
+  DB.items.filter(function(r){
+    return r.Location===loc||r.Location.toLowerCase().trim()===locClean;
+  }).forEach(function(r){
+    var p=r.Platform||'GrabFood';
     platMap[p]=(platMap[p]||0)+nv(r.Revenue);
+    platItemsTotal+=nv(r.Revenue);
   });
+  // Scale platform revenues to match branch gross
+  var platScale=platItemsTotal>0?(grossRev/platItemsTotal):1;
+  Object.keys(platMap).forEach(function(p){platMap[p]=platMap[p]*platScale;});
 
   // Commission
   var rate=commRate(loc);
@@ -5974,20 +5981,21 @@ function generatePRR(){
   var now=new Date();
   var reportDate=now.toLocaleDateString('en-MY',{day:'numeric',month:'long',year:'numeric'});
 
+  // ── Scale all brand revenues to match branch gross ──
+  // itemsTotal = sum of all item prices (from Items Breakdown CSV)
+  // grossRev   = true gross order value (from Branch Performance CSV)
+  // scaleFactor proportionally distributes the gross across brands
+  var itemsTotal2=brands.reduce(function(s,b){return s+brandMap[b].rev;},0);
+  var scaleFactor2=itemsTotal2>0?(grossRev/itemsTotal2):1;
+
   var brandRows=brands.map(function(b){
     var d=brandMap[b];
-    // Revenue: show exact Klikit Items Breakdown figure (matches Klikit report)
-    // Share %: calculated against branch gross (correct denominator)
-    // Commission: proportional share of total commission
-    var itemRev=d.rev;
-    var pct=grossRev>0?(itemRev/grossRev*100).toFixed(0):'0';
-    var comm=grossRev>0?(itemRev/grossRev)*grossRev*rate:itemRev*rate;
-    // Simpler: commission = itemRev/grossRev * totalCommission
-    var totalComm=grossRev*rate;
-    var brandComm=(grossRev>0?(itemRev/grossRev):0)*totalComm;
+    var scaledRev=d.rev*scaleFactor2;   // brand gross (scales to match branch total)
+    var pct=grossRev>0?(scaledRev/grossRev*100).toFixed(0):'0';
+    var brandComm=scaledRev*rate;
     return '<tr>'
       +'<td><strong>'+b+'</strong></td>'
-      +'<td style="font-family:DM Mono,monospace;">'+fmt(itemRev)+'</td>'
+      +'<td style="font-family:DM Mono,monospace;">'+fmt(scaledRev)+'</td>'
       +'<td style="text-align:center;color:#8b98a8;">'+d.qty.toFixed(0)+'</td>'
       +'<td style="text-align:center;color:#8b98a8;">'+pct+'%</td>'
       +'<td style="font-family:DM Mono,monospace;color:#c8860a;">'+fmt(brandComm)+'</td>'
@@ -5996,7 +6004,10 @@ function generatePRR(){
 
   var platRows=Object.keys(platMap).sort(function(a,b){return platMap[b]-platMap[a];}).map(function(p){
     var pct=grossRev>0?(platMap[p]/grossRev*100).toFixed(0):'0';
-    return '<tr><td>'+p+'</td><td style="font-family:DM Mono,monospace;">'+fmt(platMap[p])+'</td><td style="text-align:center;color:#8b98a8;">'+pct+'%</td></tr>';
+    return '<tr><td>'+p+'</td>'
+      +'<td style="font-family:DM Mono,monospace;">'+fmt(platMap[p])+'</td>'
+      +'<td style="text-align:center;color:#8b98a8;">'+pct+'%</td>'
+      +'</tr>';
   }).join('');
 
   var reportHTML='';
