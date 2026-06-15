@@ -5889,19 +5889,50 @@ function generatePRR(){
   var yourName=document.getElementById('prr-your-name')?document.getElementById('prr-your-name').value||'KitchenIgnite Sdn Bhd':'KitchenIgnite Sdn Bhd';
   if(!loc)return;
 
-  // Get branch data
-  var branchData=DB.branch.find(function(r){return r.Location===loc;});
-  var grossRev=branchData?nv(branchData.Revenue):DB.items.filter(function(r){return r.Location===loc;}).reduce(function(s,r){return s+nv(r.Revenue);},0);
-  if(!grossRev){return;}
+  // Get branch data — use fuzzy match to handle spacing/case differences
+  var locClean=loc.toLowerCase().trim();
+  var branchData=DB.branch.find(function(r){
+    return r.Location===loc || 
+           r.Location.toLowerCase().trim()===locClean ||
+           r.Location.toLowerCase().trim().includes(locClean) ||
+           locClean.includes(r.Location.toLowerCase().trim());
+  });
+
+  // ALWAYS use branch gross as denominator — never items sum
+  // Branch file = gross order value (correct figure for partner reports)
+  // Items file = item prices only (lower, causes inflated % if used as denominator)
+  var grossRev = branchData ? nv(branchData.Revenue) : 0;
+
+  // If no branch data found, calculate from items but warn
+  if(!grossRev){
+    var itemsSum = DB.items.filter(function(r){return r.Location===loc;})
+      .reduce(function(s,r){return s+nv(r.Revenue);},0);
+    if(!itemsSum){return;}
+    // Use items sum only as last resort — note this will inflate percentages slightly
+    grossRev = itemsSum;
+    console.warn('PRR: No branch data found for '+loc+' — using items sum. Upload Branch Performance CSV for accurate figures.');
+  }
 
   // Get brand breakdown from items
   var brandMap={};
-  DB.items.filter(function(r){return r.Location===loc;}).forEach(function(r){
+  var itemsForLoc=DB.items.filter(function(r){return r.Location===loc||r.Location.toLowerCase().trim()===locClean;});
+  itemsForLoc.forEach(function(r){
     if(!r.Brand)return;
-    if(!brandMap[r.Brand])brandMap[r.Brand]={rev:0,qty:0,orders:0};
+    if(!brandMap[r.Brand])brandMap[r.Brand]={rev:0,qty:0,orders:0,grossRev:0};
     brandMap[r.Brand].rev+=nv(r.Revenue);
     brandMap[r.Brand].qty+=nv(r.Qty);
     brandMap[r.Brand].orders++;
+  });
+
+  // Scale brand revenue to match branch gross total
+  // Klikit Items file = item prices only (excludes delivery/platform surcharges)
+  // Branch file = true gross order value (what we bill partners on)
+  // We scale proportionally so brand totals add up to branch gross
+  var itemsTotal=Object.values(brandMap).reduce(function(s,v){return s+v.rev;},0);
+  var scaleFactor=itemsTotal>0?(grossRev/itemsTotal):1;
+  Object.keys(brandMap).forEach(function(b){
+    // grossRev per brand = scaled to match branch total
+    brandMap[b].grossRev=brandMap[b].rev*scaleFactor;
   });
   var brands=Object.keys(brandMap).sort(function(a,b){return brandMap[b].rev-brandMap[a].rev;});
 
@@ -5945,13 +5976,21 @@ function generatePRR(){
 
   var brandRows=brands.map(function(b){
     var d=brandMap[b];
-    var pct=grossRev>0?(d.rev/grossRev*100).toFixed(0):'0';
+    // Revenue: show exact Klikit Items Breakdown figure (matches Klikit report)
+    // Share %: calculated against branch gross (correct denominator)
+    // Commission: proportional share of total commission
+    var itemRev=d.rev;
+    var pct=grossRev>0?(itemRev/grossRev*100).toFixed(0):'0';
+    var comm=grossRev>0?(itemRev/grossRev)*grossRev*rate:itemRev*rate;
+    // Simpler: commission = itemRev/grossRev * totalCommission
+    var totalComm=grossRev*rate;
+    var brandComm=(grossRev>0?(itemRev/grossRev):0)*totalComm;
     return '<tr>'
       +'<td><strong>'+b+'</strong></td>'
-      +'<td style="font-family:DM Mono,monospace;">'+fmt(d.rev)+'</td>'
+      +'<td style="font-family:DM Mono,monospace;">'+fmt(itemRev)+'</td>'
       +'<td style="text-align:center;color:#8b98a8;">'+d.qty.toFixed(0)+'</td>'
       +'<td style="text-align:center;color:#8b98a8;">'+pct+'%</td>'
-      +'<td style="font-family:DM Mono,monospace;color:#c8860a;">'+fmt(d.rev*rate)+'</td>'
+      +'<td style="font-family:DM Mono,monospace;color:#c8860a;">'+fmt(brandComm)+'</td>'
       +'</tr>';
   }).join('');
 
