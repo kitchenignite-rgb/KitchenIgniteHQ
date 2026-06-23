@@ -2315,14 +2315,14 @@ function calcComm(loc, grossRev){
 function partnerCompanyName(loc){
   var l=(loc||'').toLowerCase();
   if(l.includes('chef tandoor'))return'Restoran Chef Tandoor';
-  if(l.includes('loco'))return'LOCO TTDI SDN BHD';
-  if(l.includes('paan'))return'LUNA CAPITALS SDN BHD';
-  if(l.includes('pulse'))return'PULSE LOUNGE SDN BHD';
-  if(l.includes('bangsar'))return'KK INDIAN KITCHEN PLT';
-  if(l.includes('rafa')||l.includes('cheras'))return'IQANS VENTURES';
-  if(l.includes('dejabrew'))return'DEJABREW CAFEHOUSE ENTERPRISE';
-  if(l.includes('jungleleaf'))return'JUNGLE LEAF OASIS SDN BHD';
-  if(l.includes('bangi')||l.includes('puncak'))return'RESTORAN MEE KICAP IPOH';
+  if(l.includes('loco'))return'PARTNER KITCHEN B SDN BHD';
+  if(l.includes('paan'))return'PARTNER KITCHEN A SDN BHD';
+  if(l.includes('pulse'))return'PARTNER KITCHEN C SDN BHD';
+  if(l.includes('bangsar'))return'PARTNER KITCHEN D PLT';
+  if(l.includes('rafa')||l.includes('cheras'))return'PARTNER KITCHEN E VENTURES';
+  if(l.includes('dejabrew'))return'PARTNER KITCHEN F ENTERPRISE';
+  if(l.includes('jungleleaf'))return'PARTNER KITCHEN G SDN BHD';
+  if(l.includes('bangi')||l.includes('puncak'))return'PARTNER KITCHEN H';
   return loc;
 }
 
@@ -2624,7 +2624,7 @@ function previewInv(){
   html.push('<div style="font-weight:700;font-size:12px;color:#1a1a2e;margin-bottom:6px;">PAYMENT DETAILS</div>');
   html.push('<div style="font-size:12px;color:#1a1a2e;line-height:1.8;">');
   html.push('Bank: <strong>RHB Bank</strong><br>');
-  html.push('Account Name: <strong>Aum Solution Sdn Bhd</strong><br>');
+  html.push('Account Name: <strong>KitchenIgnite Sdn Bhd</strong><br>');
   html.push('Account Number: <strong>21439460034310</strong><br>');
   html.push('Reference: '+invNum+' — '+loc.split(",")[0]);
   html.push('</div></div>');
@@ -2700,7 +2700,7 @@ function emailInvPDF(){
     body+='TOTAL DUE: '+fmt(inv.total)+'\n\n';
     body+='PAYMENT DETAILS:\n';
     body+='Bank: RHB Bank\n';
-    body+='Account Name: Aum Solution Sdn Bhd\n';
+    body+='Account Name: KitchenIgnite Sdn Bhd\n';
     body+='Account Number: 21439460034310\n';
     body+='Reference: '+inv.invNum+' - '+inv.loc.split(',')[0]+'\n\n';
     body+='** PDF invoice saved to your Downloads as: '+filename+' **\n';
@@ -2888,7 +2888,12 @@ async function runMkt(){
 
 async function runBD(){
   busy('b-btn','b-prog',true);document.getElementById('b-out').classList.remove('on');
-  var areas=chips(document.getElementById('area-chips'));
+  var cityEl=document.getElementById('bd-city');
+  var areasEl=document.getElementById('bd-areas-custom');
+  var city=cityEl?cityEl.value.trim():'';
+  var areasText=areasEl?areasEl.value.trim():'';
+  var areas=areasText||city||'local area';
+  if(city&&areasText) areas=areasText+' ('+city+')';
   var brands=document.getElementById('b-brands')?document.getElementById('b-brands').value:'';
   var pitch=document.getElementById('b-pitch')?document.getElementById('b-pitch').value:'';
   
@@ -2905,10 +2910,10 @@ async function runBD(){
   if(weakLocs)prompt+='WEAKER AREAS WE WANT TO GROW: '+weakLocs+'\n\n';
   
   prompt+='YOUR TASK:\n';
-  prompt+='Generate 5 SPECIFIC, REAL potential partner businesses in Klang Valley. For each one provide:\n';
-  prompt+='- BUSINESS NAME: Real cafe/restaurant name that exists in Klang Valley\n';
+  prompt+='Generate 5 SPECIFIC, REAL potential partner businesses in ${city||"your city"}. For each one provide:\n';
+  prompt+='- BUSINESS NAME: Real cafe/restaurant name that exists in ${city||"your city"}\n';
   prompt+='- TYPE: Type of establishment (cafe, restaurant, cafeteria etc)\n';
-  prompt+='- AREA: Specific area/address in Klang Valley\n';
+  prompt+='- AREA: Specific area/address in ${city||"your city"}\n';
   prompt+='- WHY FIT: Why they are perfect for our model (kitchen capacity, foot traffic, existing ops)\n';
   prompt+='- HOW TO APPROACH: Specific approach strategy for this business\n';
   prompt+='- GRAB LINK: Their GrabFood/Foodpanda page if they already sell online\n\n';
@@ -2985,11 +2990,11 @@ ${r.body}`).then(()=>toast('✓ Copied!'));}
 // ════════════════ SAMPLE DATA ════════════════
 function loadSample(){
   DB.branch=[
-    {Location:'Paan KL',Revenue:17103.83,Qty:287,_type:'branch_gross'},
-    {Location:'Chef tandoor, Cyberjaya',Revenue:15739.75,Qty:312,_type:'branch_gross'},
-    {Location:'Pulse Lounge - Publika',Revenue:11847.00,Qty:198,_type:'branch_gross'},
-    {Location:'Loco TDDI',Revenue:11231.19,Qty:187,_type:'branch_gross'},
-    {Location:'Cheras',Revenue:4296.83,Qty:143,_type:'branch_gross'},
+    {Location:'Paan KL',Revenue:15800.00,Qty:290,_type:'branch_gross'},
+    {Location:'Chef tandoor, Cyberjaya',Revenue:12400.00,Qty:280,_type:'branch_gross'},
+    {Location:'Pulse Lounge - Publika',Revenue:11200.00,Qty:198,_type:'branch_gross'},
+    {Location:'Loco TDDI',Revenue:10800.00,Qty:187,_type:'branch_gross'},
+    {Location:'Cheras',Revenue:4100.00,Qty:143,_type:'branch_gross'},
     {Location:'Jungleleaf, Ara Damansara',Revenue:2603.06,Qty:87,_type:'branch_gross'},
     {Location:'Dejabrew Subang SS15',Revenue:2318.54,Qty:65,_type:'branch_gross'},
     {Location:'Rafa Food Court',Revenue:411.29,Qty:22,_type:'branch_gross'},
@@ -3026,7 +3031,7 @@ function loadSample(){
   });
   loadedFiles=['📊 brand-performance.csv','📍 branch-performance.csv','🔍 items-breakdown.csv'];
   renderPills();buildLocBar();refreshAll();
-  toast('✓ Sample loaded — RM 65,777 across 10 locations');
+  toast('✓ Sample loaded — RM 65,300 across 10 locations');
 }
 
 // ════════════════ RESTORE FROM STORAGE ════════════════
@@ -6075,7 +6080,7 @@ function generatePRR(){
   reportHTML+='<div class="prr-payment-title">PAYMENT DETAILS</div>';
   reportHTML+='<div style="font-size:12px;color:#2d3748;line-height:1.9;">';
   reportHTML+='Bank: <strong>RHB Bank</strong><br>';
-  reportHTML+='Account Name: <strong>Aum Solution Sdn Bhd</strong><br>';
+  reportHTML+='Account Name: <strong>KitchenIgnite Sdn Bhd</strong><br>';
   reportHTML+='Account Number: <strong>21439460034310</strong><br>';
   reportHTML+='Reference: <strong>'+periodLabel+' — '+loc.split(',')[0]+'</strong>';
   reportHTML+='</div></div>';
@@ -6147,7 +6152,7 @@ function downloadPRR(){
     'Commission Due: '+fmt(prr.comm),
     '',
     'Bank: RHB Bank',
-    'Account: Aum Solution Sdn Bhd',
+    'Account: KitchenIgnite Sdn Bhd',
     'Account No: 21439460034310',
     '',
     'KitchenIgnite · kitchenignite@gmail.com'
@@ -6173,7 +6178,7 @@ function emailPRR(){
   body+='Commission Due: '+fmt(prr.comm)+'\n\n';
   body+='PAYMENT DETAILS:\n';
   body+='Bank: RHB Bank\n';
-  body+='Account Name: Aum Solution Sdn Bhd\n';
+  body+='Account Name: KitchenIgnite Sdn Bhd\n';
   body+='Account Number: 21439460034310\n';
   body+='Reference: '+prr.periodLabel+' — '+prr.loc.split(',')[0]+'\n\n';
   body+='Thank you for your continued partnership.\n\nKitchenIgnite\nkitchenignite@gmail.com';
@@ -6621,7 +6626,7 @@ function checkAdminGate(){
       if(opSec)opSec.style.display='block';
     }
   }else{
-    if(err){err.textContent='Incorrect password. Hint: KitchenIgnite2026';}
+    if(err){err.textContent='Incorrect password. Hint: KI_OWNER_PW';}
     toast('Wrong password');
   }
 }
