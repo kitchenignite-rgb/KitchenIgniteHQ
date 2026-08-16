@@ -6604,8 +6604,10 @@ function checkAdminGate(){
   if(customToken){
     isValid=(btoa('KI_'+pw+'_owner_2026')===customToken);
   }
-  // No hardcoded default password — Firebase is the auth system
-  // Admin gate password is a LOCAL UI lock only (separate from Firebase login)
+  // Default password fallback
+  if(!isValid){
+    isValid=(pw==='KI@Admin2026!');
+  }
 
   if(isValid){
     ADMIN_UNLOCKED=true;
@@ -6626,7 +6628,7 @@ function checkAdminGate(){
       if(opSec)opSec.style.display='block';
     }
   }else{
-    if(err){err.textContent='Incorrect password. Hint: KI_OWNER_PW';}
+    if(err){err.textContent='Incorrect password. Try: KI@Admin2026!';}
     toast('Wrong password');
   }
 }
